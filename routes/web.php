@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Middleware\EnsureUserHasRole;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::view('/', 'welcome');
 
+// Hanya untuk yang belum login.
 Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
@@ -16,10 +18,32 @@ Route::middleware('guest')->group(function () {
         ->name('login.store');
 });
 
+// Semua yang sudah login.
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
+
+// Hanya admin.
+Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_ADMIN])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::view('/', 'admin.dashboard')->name('dashboard');
+    });
+
+// Staff dan admin.
+Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_STAFF . ',' . User::ROLE_ADMIN])
+    ->prefix('staff')
+    ->name('staff.')
+    ->group(function () {
+        Route::view('/', 'staff.dashboard')->name('dashboard');
+    });
+
+// Hanya pelanggan.
+Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_CUSTOMER])
+    ->prefix('customer')
+    ->name('customer.')
+    ->group(function () {
+        Route::view('/', 'customer.dashboard')->name('dashboard');
+    });

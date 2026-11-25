@@ -57,4 +57,19 @@ class User extends Authenticatable
     {
         return $this->hasMany(Address::class);
     }
+
+    public function customRequests(): HasMany
+    {
+        return $this->hasMany(CustomRequest::class);
+    }
+
+    public function cartItems(): HasMany
+    {
+        return $this->hasMany(CartItem::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
 }

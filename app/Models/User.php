@@ -72,4 +72,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'customer_id');
+    }
+
+    public function handledConversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'handler_id');
+    }
 }

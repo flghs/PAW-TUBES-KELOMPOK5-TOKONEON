@@ -50,4 +50,14 @@ class CustomRequest extends Model
     {
         return $this->hasOne(Order::class);
     }
+
+    public function conversation(): HasOne
+    {
+        return $this->hasOne(Conversation::class);
+    }
+
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class);
+    }
 }

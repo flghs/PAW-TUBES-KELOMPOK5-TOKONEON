@@ -21,6 +21,7 @@ class CustomRequest extends Model
         'request_number',
         'neon_text',
         'description',
+        'reference_image_path',
         'width_cm',
         'height_cm',
         'color',
@@ -39,11 +40,6 @@ class CustomRequest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function files(): HasMany
-    {
-        return $this->hasMany(CustomRequestFile::class);
     }
 
     public function order(): HasOne

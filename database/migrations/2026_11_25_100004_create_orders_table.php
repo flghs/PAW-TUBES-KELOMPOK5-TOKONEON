@@ -16,6 +16,10 @@ return new class extends Migration
             $table->foreignId('handled_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('type', 20)->index();
             $table->string('status', 30)->default('pending_payment')->index();
+            $table->string('payment_status', 20)->default('unpaid')->index();
+            $table->string('payment_method', 50)->nullable();
+            $table->string('payment_reference')->nullable()->index();
+            $table->timestamp('paid_at')->nullable();
             $table->unsignedBigInteger('subtotal')->default(0);
             $table->unsignedBigInteger('shipping_cost')->default(0);
             $table->unsignedBigInteger('total')->default(0);

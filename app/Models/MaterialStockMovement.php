@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class MaterialStockMovement extends Model
 {
@@ -14,13 +13,12 @@ class MaterialStockMovement extends Model
 
     protected $fillable = [
         'material_id',
+        'production_order_id',
+        'created_by',
         'type',
         'quantity',
         'stock_after',
-        'reference_type',
-        'reference_id',
         'note',
-        'created_by',
     ];
 
     protected function casts(): array
@@ -36,13 +34,13 @@ class MaterialStockMovement extends Model
         return $this->belongsTo(Material::class);
     }
 
+    public function productionOrder(): BelongsTo
+    {
+        return $this->belongsTo(ProductionOrder::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function reference(): MorphTo
-    {
-        return $this->morphTo();
     }
 }

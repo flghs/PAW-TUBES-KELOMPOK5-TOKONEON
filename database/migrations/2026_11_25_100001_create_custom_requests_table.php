@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('request_number')->unique();
             $table->string('neon_text')->nullable();
             $table->text('description')->nullable();
+            $table->string('reference_image_path')->nullable();
             $table->unsignedSmallInteger('width_cm')->nullable();
             $table->unsignedSmallInteger('height_cm')->nullable();
             $table->string('color')->nullable();

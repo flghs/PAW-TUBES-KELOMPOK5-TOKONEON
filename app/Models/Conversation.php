@@ -64,11 +64,6 @@ class Conversation extends Model
         return $this->hasMany(Message::class);
     }
 
-    public function reads(): HasMany
-    {
-        return $this->hasMany(ConversationRead::class);
-    }
-
     public function statusLogs(): HasMany
     {
         return $this->hasMany(ConversationStatusLog::class);

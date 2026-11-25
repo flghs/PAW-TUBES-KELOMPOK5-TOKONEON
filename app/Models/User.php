@@ -53,11 +53,6 @@ class User extends Authenticatable
         return $this->role === self::ROLE_CUSTOMER;
     }
 
-    public function addresses(): HasMany
-    {
-        return $this->hasMany(Address::class);
-    }
-
     public function customRequests(): HasMany
     {
         return $this->hasMany(CustomRequest::class);

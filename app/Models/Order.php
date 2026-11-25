@@ -19,6 +19,11 @@ class Order extends Model
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const PAYMENT_UNPAID = 'unpaid';
+    public const PAYMENT_PAID = 'paid';
+    public const PAYMENT_FAILED = 'failed';
+    public const PAYMENT_EXPIRED = 'expired';
+
     // Pesanan hanya dibuat oleh kode server kita (harga dihitung di backend),
     // jangan pernah mengisinya langsung dari $request->all().
     protected $fillable = [
@@ -28,6 +33,10 @@ class Order extends Model
         'handled_by',
         'type',
         'status',
+        'payment_status',
+        'payment_method',
+        'payment_reference',
+        'paid_at',
         'subtotal',
         'shipping_cost',
         'total',
@@ -39,6 +48,13 @@ class Order extends Model
         'postal_code',
         'notes',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'paid_at' => 'datetime',
+        ];
+    }
 
     public function user(): BelongsTo
     {
@@ -58,15 +74,5 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
-    }
-
-    public function payments(): HasMany
-    {
-        return $this->hasMany(Payment::class);
-    }
-
-    public function statusHistories(): HasMany
-    {
-        return $this->hasMany(OrderStatusHistory::class);
     }
 }

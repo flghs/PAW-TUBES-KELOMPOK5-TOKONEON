@@ -11,12 +11,12 @@ return new class extends Migration
         Schema::create('material_stock_movements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('material_id')->constrained()->restrictOnDelete();
+            $table->foreignId('production_order_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('type', 20)->index();
             $table->decimal('quantity', 12, 2);
             $table->decimal('stock_after', 12, 2);
-            $table->nullableMorphs('reference');
             $table->text('note')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

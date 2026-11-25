@@ -14,6 +14,9 @@ return new class extends Migration
             $table->foreignId('sender_id')->constrained('users')->restrictOnDelete();
             $table->string('sender_role', 20);
             $table->text('body')->nullable();
+            $table->string('attachment_path')->nullable();
+            $table->string('attachment_name')->nullable();
+            $table->timestamp('read_at')->nullable();
             $table->timestamps();
 
             $table->index(['conversation_id', 'id']);

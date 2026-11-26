@@ -3,12 +3,17 @@
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HomeController;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome');
+// Halaman publik (tanpa login).
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/products', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('/products/{product:slug}', [CatalogController::class, 'show'])->name('catalog.show');
 
 // Hanya untuk yang belum login.
 Route::middleware('guest')->group(function () {

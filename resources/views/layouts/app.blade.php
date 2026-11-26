@@ -7,10 +7,6 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-screen flex-col bg-zinc-950 text-zinc-100 antialiased">
-    {{-- Keranjang hanya untuk pengunjung dan pelanggan, tidak untuk staff atau admin. --}}
-    @php($showCart = ! auth()->check() || auth()->user()->isCustomer())
-    @php($cartCount = $showCart ? app(\App\Services\Cart::class)->count() : 0)
-
     <nav class="border-b border-zinc-800">
         <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
             <div class="flex items-center gap-8">
@@ -23,16 +19,10 @@
             </div>
 
             <div class="flex items-center gap-4 text-sm">
-                @if ($showCart)
-                    <a href="{{ route('cart.index') }}" class="{{ request()->routeIs('cart.*') ? 'text-cyan-300' : 'text-zinc-300 hover:text-cyan-300' }}">
-                        Keranjang
-                        @if ($cartCount > 0)
-                            <span class="ml-1 rounded-full bg-pink-500 px-2 py-0.5 text-xs font-semibold text-white">{{ $cartCount }}</span>
-                        @endif
-                    </a>
-                @endif
-
                 @auth
+                    @if (auth()->user()->isCustomer())
+                        <a href="{{ route('customer.orders.index') }}" class="{{ request()->routeIs('customer.orders.*') ? 'text-cyan-300' : 'text-zinc-300 hover:text-cyan-300' }}">Pesanan saya</a>
+                    @endif
                     <a href="{{ route('dashboard') }}" class="hover:text-cyan-300">Akun saya</a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

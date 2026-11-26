@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('status', 30)->default('pending_payment')->index();
             $table->string('payment_status', 20)->default('unpaid')->index();
             $table->string('payment_method', 50)->nullable();
-            $table->string('payment_reference')->nullable()->index();
+            $table->string('payment_proof_path')->nullable();
             $table->timestamp('paid_at')->nullable();
             $table->unsignedBigInteger('subtotal')->default(0);
             $table->unsignedBigInteger('shipping_cost')->default(0);

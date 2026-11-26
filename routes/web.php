@@ -4,11 +4,13 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GalleryItemController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogController;
+use App\Http\Controllers\Customer\CheckoutController;
+use App\Http\Controllers\Customer\OrderController as CustomerOrderController;
 use App\Http\Controllers\CustomPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\OrderProofController;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -18,12 +20,6 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/products', [CatalogController::class, 'index'])->name('catalog.index');
 Route::get('/products/{product:slug}', [CatalogController::class, 'show'])->name('catalog.show');
 Route::get('/custom', [CustomPageController::class, 'index'])->name('custom.index');
-
-// Keranjang (disimpan di session, jadi pengunjung belum login pun bisa memakainya).
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart/{product:slug}', [CartController::class, 'store'])->name('cart.store');
-Route::patch('/cart/{product:slug}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/{product:slug}', [CartController::class, 'destroy'])->name('cart.destroy');
 
 // Hanya untuk yang belum login.
 Route::middleware('guest')->group(function () {
@@ -39,6 +35,9 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Bukti bayar (pemeriksaan hak akses dilakukan di dalam controller).
+    Route::get('/orders/{order}/proof', OrderProofController::class)->name('orders.proof');
 });
 
 // Hanya admin.
@@ -66,4 +65,12 @@ Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_CUSTOMER]
     ->name('customer.')
     ->group(function () {
         Route::view('/', 'customer.dashboard')->name('dashboard');
+
+        Route::get('/checkout/{product:slug}', [CheckoutController::class, 'create'])->name('checkout.create');
+        Route::post('/checkout/{product:slug}', [CheckoutController::class, 'store'])->name('checkout.store');
+
+        Route::get('/orders', [CustomerOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [CustomerOrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel'])->name('orders.cancel');
+        Route::post('/orders/{order}/payment-proof', [CustomerOrderController::class, 'uploadProof'])->name('orders.proof.store');
     });

@@ -3,6 +3,7 @@
 @section('title', $product->name)
 
 @section('content')
+{{-- Tombol beli hanya untuk pengunjung dan pelanggan, tidak untuk staff atau admin. --}}
 @php($canBuy = ! auth()->check() || auth()->user()->isCustomer())
 
 <a href="{{ route('catalog.index') }}" class="text-sm text-zinc-400 hover:text-cyan-300">&larr; Kembali ke katalog</a>
@@ -38,18 +39,14 @@
         </p>
 
         @if ($product->stock > 0 && $canBuy)
-            <form method="POST" action="{{ route('cart.store', $product->slug) }}" class="mt-6 flex items-center gap-3">
-                @csrf
+            <form method="GET" action="{{ route('customer.checkout.create', $product->slug) }}" class="mt-6 flex items-center gap-3">
                 <input type="number" name="quantity" min="1" max="{{ min($product->stock, 100) }}" value="1" required
                     class="w-24 rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 focus:border-cyan-400 focus:outline-none">
                 <button type="submit"
                     class="rounded-md bg-pink-500 px-4 py-2 font-semibold text-white shadow-[0_0_16px_rgba(236,72,153,0.6)] hover:bg-pink-400">
-                    Tambah ke keranjang
+                    Beli sekarang
                 </button>
             </form>
-            @error('quantity')
-                <p class="mt-2 text-sm text-red-400">{{ $message }}</p>
-            @enderror
         @endif
 
         @if ($product->description)

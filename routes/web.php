@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GalleryItemController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CustomPageController;
 use App\Http\Controllers\DashboardController;
@@ -17,6 +18,12 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/products', [CatalogController::class, 'index'])->name('catalog.index');
 Route::get('/products/{product:slug}', [CatalogController::class, 'show'])->name('catalog.show');
 Route::get('/custom', [CustomPageController::class, 'index'])->name('custom.index');
+
+// Keranjang (disimpan di session, jadi pengunjung belum login pun bisa memakainya).
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::post('/cart/{product:slug}', [CartController::class, 'store'])->name('cart.store');
+Route::patch('/cart/{product:slug}', [CartController::class, 'update'])->name('cart.update');
+Route::delete('/cart/{product:slug}', [CartController::class, 'destroy'])->name('cart.destroy');
 
 // Hanya untuk yang belum login.
 Route::middleware('guest')->group(function () {

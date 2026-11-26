@@ -16,6 +16,31 @@ class CustomRequest extends Model
     public const STATUS_REJECTED = 'rejected';
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const STATUS_LABELS = [
+        self::STATUS_SUBMITTED => 'Dikirim',
+        self::STATUS_IN_DISCUSSION => 'Dalam diskusi',
+        self::STATUS_QUOTED => 'Penawaran dikirim',
+        self::STATUS_APPROVED => 'Disetujui',
+        self::STATUS_REJECTED => 'Ditolak',
+        self::STATUS_CANCELLED => 'Dibatalkan',
+    ];
+
+    public const COLORS = [
+        'Putih hangat',
+        'Putih dingin',
+        'Merah',
+        'Pink',
+        'Biru',
+        'Hijau',
+        'Kuning',
+        'Oranye',
+        'Ungu',
+        'Multi-warna (RGB)',
+        'Lainnya (jelaskan di deskripsi)',
+    ];
+
+    // Nomor, status, dan pemilik request hanya diisi oleh kode server kita,
+    // jangan pernah mengisinya langsung dari $request->all().
     protected $fillable = [
         'user_id',
         'request_number',
@@ -35,6 +60,11 @@ class CustomRequest extends Model
         return [
             'deadline_date' => 'date',
         ];
+    }
+
+    public function statusLabel(): string
+    {
+        return self::STATUS_LABELS[$this->status] ?? $this->status;
     }
 
     public function user(): BelongsTo

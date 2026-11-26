@@ -12,7 +12,6 @@ return new class extends Migration
             $table->id();
             $table->string('order_number')->unique();
             $table->foreignId('user_id')->constrained()->restrictOnDelete();
-            $table->foreignId('custom_request_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('handled_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('type', 20)->index();
             $table->string('status', 30)->default('pending_payment')->index();

@@ -29,7 +29,6 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'user_id',
-        'custom_request_id',
         'handled_by',
         'type',
         'status',
@@ -64,11 +63,6 @@ class Order extends Model
     public function handler(): BelongsTo
     {
         return $this->belongsTo(User::class, 'handled_by');
-    }
-
-    public function customRequest(): BelongsTo
-    {
-        return $this->belongsTo(CustomRequest::class);
     }
 
     public function items(): HasMany

@@ -53,11 +53,6 @@ class User extends Authenticatable
         return $this->role === self::ROLE_CUSTOMER;
     }
 
-    public function customRequests(): HasMany
-    {
-        return $this->hasMany(CustomRequest::class);
-    }
-
     public function cartItems(): HasMany
     {
         return $this->hasMany(CartItem::class);
@@ -66,15 +61,5 @@ class User extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
-    }
-
-    public function conversations(): HasMany
-    {
-        return $this->hasMany(Conversation::class, 'customer_id');
-    }
-
-    public function handledConversations(): HasMany
-    {
-        return $this->hasMany(Conversation::class, 'handler_id');
     }
 }

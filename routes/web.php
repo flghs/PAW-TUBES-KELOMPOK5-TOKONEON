@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Middleware\EnsureUserHasRole;
@@ -32,6 +33,7 @@ Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_ADMIN])
     ->group(function () {
         Route::view('/', 'admin.dashboard')->name('dashboard');
         Route::resource('categories', CategoryController::class)->except('show');
+        Route::resource('products', ProductController::class)->except('show');
     });
 
 // Staff dan admin.

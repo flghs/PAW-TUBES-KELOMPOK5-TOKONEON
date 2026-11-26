@@ -29,4 +29,10 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    // Alamat foto yang bisa dibuka di browser, atau null kalau produk belum punya foto.
+    public function imageUrl(): ?string
+    {
+        return $this->image_path ? asset('storage/' . $this->image_path) : null;
+    }
 }

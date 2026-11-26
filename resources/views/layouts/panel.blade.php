@@ -21,6 +21,10 @@
                 </a>
 
                 @if ($user->isAdmin())
+                    <a href="{{ route('admin.products.index') }}"
+                        class="block rounded-md px-3 py-2 {{ request()->routeIs('admin.products.*') ? 'bg-cyan-400/10 text-cyan-300' : 'text-zinc-300 hover:bg-zinc-800' }}">
+                        Produk
+                    </a>
                     <a href="{{ route('admin.categories.index') }}"
                         class="block rounded-md px-3 py-2 {{ request()->routeIs('admin.categories.*') ? 'bg-cyan-400/10 text-cyan-300' : 'text-zinc-300 hover:bg-zinc-800' }}">
                         Kategori

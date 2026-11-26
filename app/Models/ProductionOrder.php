@@ -53,8 +53,9 @@ class ProductionOrder extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
-    public function usages(): HasMany
+    // Bahan yang dipakai di produksi ini: baris riwayat stok bahan bertipe "out".
+    public function materialMovements(): HasMany
     {
-        return $this->hasMany(ProductionMaterialUsage::class);
+        return $this->hasMany(MaterialStockMovement::class);
     }
 }

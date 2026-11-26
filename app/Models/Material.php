@@ -35,9 +35,4 @@ class Material extends Model
     {
         return $this->hasMany(MaterialStockMovement::class);
     }
-
-    public function usages(): HasMany
-    {
-        return $this->hasMany(ProductionMaterialUsage::class);
-    }
 }

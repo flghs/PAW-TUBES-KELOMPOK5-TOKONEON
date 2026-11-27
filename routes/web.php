@@ -11,6 +11,7 @@ use App\Http\Controllers\CustomPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrderProofController;
+use App\Http\Controllers\Staff\OrderController as StaffOrderController;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,13 @@ Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_STAFF . '
     ->name('staff.')
     ->group(function () {
         Route::view('/', 'staff.dashboard')->name('dashboard');
+
+        Route::get('/orders', [StaffOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [StaffOrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/payment/approve', [StaffOrderController::class, 'approvePayment'])->name('orders.payment.approve');
+        Route::post('/orders/{order}/payment/reject', [StaffOrderController::class, 'rejectPayment'])->name('orders.payment.reject');
+        Route::patch('/orders/{order}/status', [StaffOrderController::class, 'updateStatus'])->name('orders.status');
+        Route::post('/orders/{order}/cancel', [StaffOrderController::class, 'cancel'])->name('orders.cancel');
     });
 
 // Hanya pelanggan.

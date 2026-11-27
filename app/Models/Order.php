@@ -5,11 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
     public const TYPE_READY = 'ready';
     public const TYPE_CUSTOM = 'custom';
+
+    public const TYPE_LABELS = [
+        self::TYPE_READY => 'Produk jadi',
+        self::TYPE_CUSTOM => 'Custom',
+    ];
 
     // Tahap pengerjaan pesanan.
     public const STATUS_PENDING_PAYMENT = 'pending_payment';
@@ -28,6 +34,15 @@ class Order extends Model
         self::STATUS_SHIPPED => 'Dikirim',
         self::STATUS_COMPLETED => 'Selesai',
         self::STATUS_CANCELLED => 'Dibatalkan',
+    ];
+
+    // Alur status: "dari status ini boleh pindah ke status mana saja".
+    // Status "Dibayar" tidak diubah lewat daftar ini, tapi lewat persetujuan pembayaran.
+    public const NEXT_STATUSES = [
+        self::STATUS_PAID => [self::STATUS_IN_PRODUCTION, self::STATUS_READY_TO_SHIP],
+        self::STATUS_IN_PRODUCTION => [self::STATUS_READY_TO_SHIP],
+        self::STATUS_READY_TO_SHIP => [self::STATUS_SHIPPED],
+        self::STATUS_SHIPPED => [self::STATUS_COMPLETED],
     ];
 
     // Keadaan pembayaran.
@@ -74,6 +89,11 @@ class Order extends Model
         ];
     }
 
+    public function typeLabel(): string
+    {
+        return self::TYPE_LABELS[$this->type] ?? $this->type;
+    }
+
     public function statusLabel(): string
     {
         return self::STATUS_LABELS[$this->status] ?? $this->status;
@@ -84,11 +104,49 @@ class Order extends Model
         return self::PAYMENT_LABELS[$this->payment_status] ?? $this->payment_status;
     }
 
+    // Status tujuan yang boleh dipilih staff atau admin dari status sekarang.
+    public function nextStatuses(): array
+    {
+        return self::NEXT_STATUSES[$this->status] ?? [];
+    }
+
     // Pesanan masih menunggu pembayaran: pelanggan boleh mengunggah bukti bayar atau membatalkan.
     public function isAwaitingPayment(): bool
     {
         return $this->status === self::STATUS_PENDING_PAYMENT
             && in_array($this->payment_status, [self::PAYMENT_UNPAID, self::PAYMENT_REJECTED], true);
+    }
+
+    // Admin boleh membatalkan selama pesanan belum dikirim.
+    public function canBeCancelledByAdmin(): bool
+    {
+        return ! in_array($this->status, [
+            self::STATUS_SHIPPED,
+            self::STATUS_COMPLETED,
+            self::STATUS_CANCELLED,
+        ], true);
+    }
+
+    // Membatalkan pesanan dan mengembalikan stok produk jadi.
+    // Dipakai bersama oleh pelanggan (batalkan sendiri) dan admin.
+    public function cancelAndRestoreStock(?int $handledBy = null): void
+    {
+        DB::transaction(function () use ($handledBy) {
+            foreach ($this->items as $item) {
+                // Item custom tidak punya product_id, jadi tidak ada stok yang dikembalikan.
+                if ($item->product_id) {
+                    Product::whereKey($item->product_id)->increment('stock', $item->quantity);
+                }
+            }
+
+            $data = ['status' => self::STATUS_CANCELLED];
+
+            if ($handledBy) {
+                $data['handled_by'] = $handledBy;
+            }
+
+            $this->update($data);
+        });
     }
 
     public function user(): BelongsTo

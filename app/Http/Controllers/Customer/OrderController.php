@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -40,16 +38,8 @@ class OrderController extends Controller
             return back()->with('error', 'Pesanan ini tidak bisa dibatalkan.');
         }
 
-        DB::transaction(function () use ($order) {
-            // Stok yang tadi dikurangi dikembalikan.
-            foreach ($order->items as $item) {
-                if ($item->product_id) {
-                    Product::whereKey($item->product_id)->increment('stock', $item->quantity);
-                }
-            }
-
-            $order->update(['status' => Order::STATUS_CANCELLED]);
-        });
+        $order->load('items');
+        $order->cancelAndRestoreStock();
 
         return back()->with('success', 'Pesanan dibatalkan.');
     }

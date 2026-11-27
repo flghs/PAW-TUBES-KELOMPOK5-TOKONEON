@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -17,14 +19,23 @@ class OrderController extends Controller
             'q' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', Rule::in(array_keys(Order::STATUS_LABELS))],
             'payment_status' => ['nullable', Rule::in(array_keys(Order::PAYMENT_LABELS))],
+            'attention' => ['nullable', 'boolean'],
         ]);
 
-        $orders = Order::with('user')
+        $orders = Order::query()
             ->when($filters['q'] ?? null, function ($query, $term) {
-                $query->where('order_number', 'ilike', '%' . $term . '%');
+                $query->where(function ($inner) use ($term) {
+                    $like = '%' . $term . '%';
+
+                    $inner->where('order_number', 'ilike', $like)
+                        ->orWhere('recipient_name', 'ilike', $like)
+                        ->orWhere('phone', 'ilike', $like);
+                });
             })
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['payment_status'] ?? null, fn ($query, $payment) => $query->where('payment_status', $payment))
+            // "Perlu dihubungi" = lunas tapi stok kurang.
+            ->when($filters['attention'] ?? null, fn ($query) => $query->where('stock_short', true))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -34,25 +45,79 @@ class OrderController extends Controller
 
     public function show(Order $order): View
     {
-        $order->load(['items', 'user', 'handler']);
+        $order->load(['items.product', 'handler']);
 
         return view('staff.orders.show', compact('order'));
     }
 
+    // Menyetujui pembayaran sekaligus mengambil stok. Pesanan yang disetujui lebih dulu
+    // mendapat stok; kalau stok sudah habis, pesanan tetap lunas tapi diberi penanda
+    // "stok kurang" supaya staff menghubungi pembeli (uang kembali atau menunggu produksi).
     public function approvePayment(Request $request, Order $order): RedirectResponse
     {
-        if (! $this->isWaitingForReview($order)) {
+        $result = DB::transaction(function () use ($request, $order) {
+            // Kunci pesanan supaya tidak disetujui dua kali bersamaan.
+            $locked = Order::whereKey($order->id)->lockForUpdate()->with('items')->firstOrFail();
+
+            if (! $this->isWaitingForReview($locked)) {
+                return null;
+            }
+
+            // Pesanan lama (dibuat sebelum aturan ini) sudah memotong stok saat dibuat,
+            // jadi jangan dipotong dua kali.
+            $deduct = $locked->stock_deducted;
+            $short = false;
+
+            if (! $deduct) {
+                // Jumlah yang dibutuhkan per produk, diurutkan supaya urutan penguncian selalu sama.
+                $needs = $locked->items
+                    ->whereNotNull('product_id')
+                    ->groupBy('product_id')
+                    ->map(fn ($items) => $items->sum('quantity'))
+                    ->sortKeys();
+
+                // Kunci baris produk supaya dua persetujuan tidak mengambil stok yang sama.
+                $products = Product::whereIn('id', $needs->keys()->all())
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                $enough = $needs->every(
+                    fn ($quantity, $productId) => isset($products[$productId]) && $products[$productId]->stock >= $quantity
+                );
+
+                $deduct = $needs->isNotEmpty() && $enough;
+                $short = $needs->isNotEmpty() && ! $enough;
+
+                if ($deduct) {
+                    foreach ($needs as $productId => $quantity) {
+                        $products[$productId]->decrement('stock', $quantity);
+                    }
+                }
+            }
+
+            $locked->update([
+                'payment_status' => Order::PAYMENT_PAID,
+                'status' => Order::STATUS_PAID,
+                'paid_at' => now(),
+                'handled_by' => $request->user()->id,
+                'stock_deducted' => $deduct,
+                'stock_short' => $short,
+            ]);
+
+            return $short ? 'short' : 'ok';
+        });
+
+        if ($result === null) {
             return back()->with('error', 'Pembayaran pesanan ini tidak sedang menunggu pemeriksaan.');
         }
 
-        $order->update([
-            'payment_status' => Order::PAYMENT_PAID,
-            'status' => Order::STATUS_PAID,
-            'paid_at' => now(),
-            'handled_by' => $request->user()->id,
-        ]);
+        if ($result === 'short') {
+            return back()->with('success', 'Pembayaran dikonfirmasi, tetapi stok tidak cukup. Hubungi pembeli: uang dikembalikan atau menunggu barang dibuat.');
+        }
 
-        return back()->with('success', 'Pembayaran dikonfirmasi. Pesanan berstatus Dibayar.');
+        return back()->with('success', 'Pembayaran dikonfirmasi dan stok dikurangi. Pesanan berstatus Dibayar.');
     }
 
     public function rejectPayment(Request $request, Order $order): RedirectResponse
@@ -66,12 +131,12 @@ class OrderController extends Controller
             'handled_by' => $request->user()->id,
         ]);
 
-        return back()->with('success', 'Bukti bayar ditolak. Pelanggan bisa mengunggah ulang.');
+        return back()->with('success', 'Bukti bayar ditolak. Pembeli bisa mengunggah ulang.');
     }
 
     public function updateStatus(Request $request, Order $order): RedirectResponse
     {
-        // Hanya status tujuan yang diizinkan oleh alur (Order::NEXT_STATUSES) yang diterima.
+        // Hanya status tujuan yang diizinkan oleh alur (Order::nextStatuses) yang diterima.
         $data = $request->validate([
             'status' => ['required', Rule::in($order->nextStatuses())],
         ], [
@@ -79,27 +144,34 @@ class OrderController extends Controller
             'status.in' => 'Status tujuan tidak valid untuk pesanan ini.',
         ]);
 
+        // Pembeli yang stoknya kurang dan memilih menunggu sudah ditangani,
+        // jadi penanda "stok kurang" dihapus begitu status berubah.
         $order->update([
             'status' => $data['status'],
+            'stock_short' => false,
             'handled_by' => $request->user()->id,
         ]);
 
         return back()->with('success', 'Status pesanan diperbarui.');
     }
 
+    // Staff dan admin sama-sama boleh membatalkan.
     public function cancel(Request $request, Order $order): RedirectResponse
     {
-        // Pembatalan oleh admin saja.
-        abort_unless($request->user()->isAdmin(), 403);
-
-        if (! $order->canBeCancelledByAdmin()) {
+        if (! $order->canBeCancelled()) {
             return back()->with('error', 'Pesanan ini tidak bisa dibatalkan.');
         }
 
-        $order->load('items');
-        $order->cancelAndRestoreStock($request->user()->id);
+        $restoresStock = $order->stock_deducted;
 
-        return back()->with('success', 'Pesanan dibatalkan dan stok dikembalikan.');
+        if (! $order->cancel($request->user()->id)) {
+            return back()->with('error', 'Pesanan ini tidak bisa dibatalkan.');
+        }
+
+        return back()->with(
+            'success',
+            $restoresStock ? 'Pesanan dibatalkan dan stok dikembalikan.' : 'Pesanan dibatalkan.'
+        );
     }
 
     private function isWaitingForReview(Order $order): bool

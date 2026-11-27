@@ -15,3 +15,6 @@
 @endphp
 <span class="rounded-full border px-2 py-0.5 text-xs {{ $statusClasses }}">{{ $order->statusLabel() }}</span>
 <span class="rounded-full border px-2 py-0.5 text-xs {{ $paymentClasses }}">{{ $order->paymentLabel() }}</span>
+@if ($order->stock_short && $order->status !== 'cancelled')
+    <span class="rounded-full border border-yellow-500/50 px-2 py-0.5 text-xs text-yellow-300">Stok kurang</span>
+@endif

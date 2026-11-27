@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Support\OrderAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -13,10 +14,9 @@ class OrderProofController extends Controller
     {
         $user = $request->user();
 
-        // Hanya pemilik pesanan, staff, atau admin yang boleh membuka bukti bayar.
-        $allowed = $user->isAdmin()
-            || $user->isStaff()
-            || $order->user_id === $user->id;
+        // Hanya staff, admin, atau pembeli yang browsernya sudah terverifikasi untuk pesanan ini.
+        $allowed = ($user && ($user->isAdmin() || $user->isStaff()))
+            || OrderAccess::has($request, $order);
 
         abort_unless($allowed, 404);
 

@@ -8,7 +8,7 @@
 <h1 class="mt-6 text-2xl font-semibold text-cyan-300">Checkout</h1>
 
 <div class="mt-6 grid gap-8 lg:grid-cols-3">
-    <form method="POST" action="{{ route('customer.checkout.store', $product->slug) }}"
+    <form method="POST" action="{{ route('checkout.store', $product->slug) }}"
         class="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6 lg:col-span-2">
         @csrf
         <input type="hidden" name="quantity" value="{{ old('quantity', $quantity) }}">
@@ -20,7 +20,7 @@
 
         <div>
             <label for="recipient_name" class="mb-1 block text-sm">Nama penerima</label>
-            <input id="recipient_name" name="recipient_name" type="text" value="{{ old('recipient_name', auth()->user()->name) }}" required
+            <input id="recipient_name" name="recipient_name" type="text" value="{{ old('recipient_name') }}" required
                 class="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 focus:border-cyan-400 focus:outline-none">
             @error('recipient_name')
                 <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
@@ -28,9 +28,10 @@
         </div>
 
         <div>
-            <label for="phone" class="mb-1 block text-sm">Nomor telepon</label>
-            <input id="phone" name="phone" type="text" value="{{ old('phone', auth()->user()->phone) }}" required
+            <label for="phone" class="mb-1 block text-sm">Nomor telepon / WhatsApp</label>
+            <input id="phone" name="phone" type="text" value="{{ old('phone') }}" required
                 class="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 focus:border-cyan-400 focus:outline-none">
+            <p class="mt-1 text-xs text-zinc-500">Dipakai untuk melacak pesanan dan dihubungi tim kami.</p>
             @error('phone')
                 <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
             @enderror
@@ -106,7 +107,8 @@
             <p class="text-2xl font-semibold text-zinc-100">Rp {{ number_format($product->price * $quantity, 0, ',', '.') }}</p>
         </div>
 
-        <p class="mt-4 text-xs text-zinc-500">Pembayaran dilakukan lewat transfer setelah pesanan dibuat.</p>
+        <p class="mt-4 text-xs text-zinc-500">Pembayaran dilakukan lewat transfer setelah pesanan dibuat. Tidak perlu membuat akun.</p>
+        <p class="mt-2 text-xs text-zinc-500">Stok dipastikan setelah pembayaranmu dikonfirmasi. Kalau stok sudah diambil pesanan lain lebih dulu, tim kami akan menghubungimu lewat WhatsApp untuk pengembalian dana atau menunggu barang dibuat.</p>
     </div>
 </div>
 @endsection

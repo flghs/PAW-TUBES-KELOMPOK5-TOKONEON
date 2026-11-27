@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
+use App\Support\OrderAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +40,8 @@ class CheckoutController extends Controller
         return view('customer.checkout', compact('product', 'quantity'));
     }
 
-    // Membuat pesanan.
+    // Membuat pesanan. Stok belum dikurangi di sini: stok dikurangi saat staff
+    // menyetujui bukti bayar (siapa yang disetujui lebih dulu, dia yang dapat stok).
     public function store(Request $request, Product $product): RedirectResponse
     {
         abort_unless($product->is_active, 404);
@@ -47,7 +49,17 @@ class CheckoutController extends Controller
         $data = $request->validate([
             'quantity' => ['required', 'integer', 'min:1', 'max:100'],
             'recipient_name' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:20'],
+            'phone' => [
+                'required',
+                'string',
+                'max:20',
+                'regex:/^[0-9+\-\s()]+$/',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (strlen(Order::normalizePhone($value)) < 9) {
+                        $fail('Nomor telepon tidak valid.');
+                    }
+                },
+            ],
             'shipping_address' => ['required', 'string', 'max:500'],
             'city' => ['required', 'string', 'max:100'],
             'province' => ['required', 'string', 'max:100'],
@@ -60,30 +72,27 @@ class CheckoutController extends Controller
             'quantity.max' => 'Jumlah maksimal 100.',
             'recipient_name.required' => 'Isi nama penerima.',
             'phone.required' => 'Isi nomor telepon penerima.',
+            'phone.regex' => 'Nomor telepon hanya boleh berisi angka, spasi, tanda + atau -.',
             'shipping_address.required' => 'Isi alamat lengkap.',
             'city.required' => 'Isi kota.',
             'province.required' => 'Isi provinsi.',
             'postal_code.required' => 'Isi kode pos.',
         ]);
 
-        // Semua langkah di dalam transaksi dianggap satu paket:
-        // kalau satu gagal, semuanya dibatalkan.
-        $order = DB::transaction(function () use ($request, $product, $data) {
-            // Kunci baris produk supaya dua pembeli tidak mengambil stok yang sama.
-            $lockedProduct = Product::whereKey($product->id)->lockForUpdate()->firstOrFail();
+        // Stok hanya dicek di sini, belum dikunci.
+        if ($product->stock < $data['quantity']) {
+            return redirect()
+                ->route('catalog.show', $product->slug)
+                ->with('error', 'Stok tidak cukup atau produk sudah tidak tersedia.');
+        }
 
-            if (! $lockedProduct->is_active || $lockedProduct->stock < $data['quantity']) {
-                return null;
-            }
-
-            $lockedProduct->decrement('stock', $data['quantity']);
-
+        // Pesanan dan isinya dibuat sebagai satu paket: kalau satu gagal, semuanya dibatalkan.
+        $order = DB::transaction(function () use ($product, $data) {
             // Harga selalu diambil dari database, bukan dari form.
-            $subtotal = $lockedProduct->price * $data['quantity'];
+            $subtotal = $product->price * $data['quantity'];
 
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
-                'user_id' => $request->user()->id,
                 'type' => Order::TYPE_READY,
                 'status' => Order::STATUS_PENDING_PAYMENT,
                 'payment_status' => Order::PAYMENT_UNPAID,
@@ -102,9 +111,9 @@ class CheckoutController extends Controller
 
             // Nama dan harga disalin (snapshot), jadi tidak berubah kalau produk diubah nanti.
             $order->items()->create([
-                'product_id' => $lockedProduct->id,
-                'item_name' => $lockedProduct->name,
-                'unit_price' => $lockedProduct->price,
+                'product_id' => $product->id,
+                'item_name' => $product->name,
+                'unit_price' => $product->price,
                 'quantity' => $data['quantity'],
                 'subtotal' => $subtotal,
             ]);
@@ -112,15 +121,12 @@ class CheckoutController extends Controller
             return $order;
         });
 
-        if (! $order) {
-            return redirect()
-                ->route('catalog.show', $product->slug)
-                ->with('error', 'Stok tidak cukup atau produk sudah tidak tersedia.');
-        }
+        // Pembeli tidak punya akun: pesanan ini dicatat di sesi browsernya.
+        OrderAccess::grant($request, $order);
 
         return redirect()
-            ->route('customer.orders.show', $order)
-            ->with('success', 'Pesanan berhasil dibuat. Silakan lakukan pembayaran.');
+            ->route('orders.show', $order->order_number)
+            ->with('success', 'Pesanan berhasil dibuat. Simpan nomor pesananmu, lalu lakukan pembayaran.');
     }
 
     private function generateOrderNumber(): string

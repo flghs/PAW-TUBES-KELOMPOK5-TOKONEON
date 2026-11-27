@@ -22,23 +22,39 @@ Route::get('/products', [CatalogController::class, 'index'])->name('catalog.inde
 Route::get('/products/{product:slug}', [CatalogController::class, 'show'])->name('catalog.show');
 Route::get('/custom', [CustomPageController::class, 'index'])->name('custom.index');
 
-// Hanya untuk yang belum login.
+// Beli sekarang dan pesanan pembeli. Pembeli tidak punya akun:
+// pesanan dibuka lewat sesi browser, atau lewat nomor pesanan + nomor telepon.
+Route::get('/checkout/{product:slug}', [CheckoutController::class, 'create'])->name('checkout.create');
+Route::post('/checkout/{product:slug}', [CheckoutController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('checkout.store');
+
+Route::get('/track', [CustomerOrderController::class, 'track'])->name('orders.track');
+Route::post('/track', [CustomerOrderController::class, 'lookup'])
+    ->middleware('throttle:10,1')
+    ->name('orders.lookup');
+
+Route::get('/orders/{order:order_number}', [CustomerOrderController::class, 'show'])->name('orders.show');
+Route::post('/orders/{order:order_number}/cancel', [CustomerOrderController::class, 'cancel'])->name('orders.cancel');
+Route::post('/orders/{order:order_number}/payment-proof', [CustomerOrderController::class, 'uploadProof'])
+    ->middleware('throttle:10,1')
+    ->name('orders.proof.store');
+
+// Bukti bayar (pemeriksaan hak akses dilakukan di dalam controller).
+Route::get('/orders/{order:order_number}/proof', OrderProofController::class)->name('orders.proof');
+
+// Login hanya untuk staff dan admin, dan hanya untuk yang belum login.
 Route::middleware('guest')->group(function () {
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register'])->name('register.store');
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])
         ->middleware('throttle:5,1')
         ->name('login.store');
 });
 
-// Semua yang sudah login.
+// Semua staff dan admin yang sudah login.
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-    // Bukti bayar (pemeriksaan hak akses dilakukan di dalam controller).
-    Route::get('/orders/{order}/proof', OrderProofController::class)->name('orders.proof');
 });
 
 // Hanya admin.
@@ -65,20 +81,4 @@ Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_STAFF . '
         Route::post('/orders/{order}/payment/reject', [StaffOrderController::class, 'rejectPayment'])->name('orders.payment.reject');
         Route::patch('/orders/{order}/status', [StaffOrderController::class, 'updateStatus'])->name('orders.status');
         Route::post('/orders/{order}/cancel', [StaffOrderController::class, 'cancel'])->name('orders.cancel');
-    });
-
-// Hanya pelanggan.
-Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_CUSTOMER])
-    ->prefix('customer')
-    ->name('customer.')
-    ->group(function () {
-        Route::view('/', 'customer.dashboard')->name('dashboard');
-
-        Route::get('/checkout/{product:slug}', [CheckoutController::class, 'create'])->name('checkout.create');
-        Route::post('/checkout/{product:slug}', [CheckoutController::class, 'store'])->name('checkout.store');
-
-        Route::get('/orders', [CustomerOrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [CustomerOrderController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel'])->name('orders.cancel');
-        Route::post('/orders/{order}/payment-proof', [CustomerOrderController::class, 'uploadProof'])->name('orders.proof.store');
     });

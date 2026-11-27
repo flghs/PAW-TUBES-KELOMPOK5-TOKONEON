@@ -62,13 +62,14 @@ class Order extends Model
     // jangan pernah mengisinya langsung dari $request->all().
     protected $fillable = [
         'order_number',
-        'user_id',
         'handled_by',
         'type',
         'status',
         'payment_status',
         'payment_method',
         'payment_proof_path',
+        'stock_deducted',
+        'stock_short',
         'paid_at',
         'subtotal',
         'shipping_cost',
@@ -86,7 +87,32 @@ class Order extends Model
     {
         return [
             'paid_at' => 'datetime',
+            'stock_deducted' => 'boolean',
+            'stock_short' => 'boolean',
         ];
+    }
+
+    // Nomor telepon dibandingkan dalam bentuk angka saja dengan awalan 62,
+    // jadi "0812-3456-789", "+62 812 3456 789", dan "6281234567890" dianggap sama.
+    public static function normalizePhone(?string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+
+        if (str_starts_with($digits, '620')) {
+            return '62' . substr($digits, 3);
+        }
+
+        if (str_starts_with($digits, '0')) {
+            return '62' . substr($digits, 1);
+        }
+
+        return $digits;
+    }
+
+    // Nomor pembeli untuk tautan wa.me.
+    public function whatsappPhone(): string
+    {
+        return self::normalizePhone($this->phone);
     }
 
     public function typeLabel(): string
@@ -107,18 +133,24 @@ class Order extends Model
     // Status tujuan yang boleh dipilih staff atau admin dari status sekarang.
     public function nextStatuses(): array
     {
+        // Stok kurang: kalau pembeli memilih menunggu, pesanan hanya bisa lanjut ke produksi.
+        // (Kalau pembeli memilih uang kembali, staff membatalkan pesanan.)
+        if ($this->stock_short && $this->status === self::STATUS_PAID) {
+            return [self::STATUS_IN_PRODUCTION];
+        }
+
         return self::NEXT_STATUSES[$this->status] ?? [];
     }
 
-    // Pesanan masih menunggu pembayaran: pelanggan boleh mengunggah bukti bayar atau membatalkan.
+    // Pesanan masih menunggu pembayaran: pembeli boleh mengunggah bukti bayar atau membatalkan.
     public function isAwaitingPayment(): bool
     {
         return $this->status === self::STATUS_PENDING_PAYMENT
             && in_array($this->payment_status, [self::PAYMENT_UNPAID, self::PAYMENT_REJECTED], true);
     }
 
-    // Admin boleh membatalkan selama pesanan belum dikirim.
-    public function canBeCancelledByAdmin(): bool
+    // Staff dan admin boleh membatalkan selama pesanan belum dikirim.
+    public function canBeCancelled(): bool
     {
         return ! in_array($this->status, [
             self::STATUS_SHIPPED,
@@ -127,31 +159,46 @@ class Order extends Model
         ], true);
     }
 
-    // Membatalkan pesanan dan mengembalikan stok produk jadi.
-    // Dipakai bersama oleh pelanggan (batalkan sendiri) dan admin.
-    public function cancelAndRestoreStock(?int $handledBy = null): void
+    // Membatalkan pesanan. Stok hanya dikembalikan kalau memang sudah dikurangi.
+    // $onlyIfAwaitingPayment = true dipakai pembeli (hanya boleh batal sebelum bayar).
+    // Mengembalikan false kalau pesanan sudah tidak bisa dibatalkan.
+    public function cancel(?int $handledBy = null, bool $onlyIfAwaitingPayment = false): bool
     {
-        DB::transaction(function () use ($handledBy) {
-            foreach ($this->items as $item) {
-                // Item custom tidak punya product_id, jadi tidak ada stok yang dikembalikan.
-                if ($item->product_id) {
-                    Product::whereKey($item->product_id)->increment('stock', $item->quantity);
+        return DB::transaction(function () use ($handledBy, $onlyIfAwaitingPayment) {
+            // Kunci pesanan dan baca ulang statusnya, kalau-kalau baru saja berubah.
+            $order = self::whereKey($this->id)->lockForUpdate()->with('items')->firstOrFail();
+
+            $allowed = $onlyIfAwaitingPayment
+                ? $order->isAwaitingPayment()
+                : $order->canBeCancelled();
+
+            if (! $allowed) {
+                return false;
+            }
+
+            if ($order->stock_deducted) {
+                foreach ($order->items as $item) {
+                    // Item custom tidak punya product_id, jadi tidak ada stok yang dikembalikan.
+                    if ($item->product_id) {
+                        Product::whereKey($item->product_id)->increment('stock', $item->quantity);
+                    }
                 }
             }
 
-            $data = ['status' => self::STATUS_CANCELLED];
+            $data = [
+                'status' => self::STATUS_CANCELLED,
+                'stock_deducted' => false,
+                'stock_short' => false,
+            ];
 
             if ($handledBy) {
                 $data['handled_by'] = $handledBy;
             }
 
-            $this->update($data);
-        });
-    }
+            $order->update($data);
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
+            return true;
+        });
     }
 
     public function handler(): BelongsTo

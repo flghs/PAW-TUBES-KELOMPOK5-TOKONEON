@@ -1,10 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Masuk')
+@section('title', 'Masuk Staff')
 
 @section('content')
 <div class="mx-auto max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-8 shadow-[0_0_30px_rgba(34,211,238,0.15)]">
-    <h1 class="mb-6 text-2xl font-semibold text-cyan-300">Masuk</h1>
+    <h1 class="mb-2 text-2xl font-semibold text-cyan-300">Masuk staff</h1>
+    <p class="mb-6 text-sm text-zinc-400">Halaman ini hanya untuk staff dan admin. Pembeli tidak perlu masuk.</p>
 
     <form method="POST" action="{{ route('login.store') }}" class="space-y-4">
         @csrf
@@ -37,10 +38,5 @@
             Masuk
         </button>
     </form>
-
-    <p class="mt-6 text-sm text-zinc-400">
-        Belum punya akun?
-        <a href="{{ route('register') }}" class="text-pink-400 hover:underline">Daftar</a>
-    </p>
 </div>
 @endsection

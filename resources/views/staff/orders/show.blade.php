@@ -3,6 +3,11 @@
 @section('title', 'Pesanan ' . $order->order_number)
 
 @section('content')
+@php
+    $waMessage = "Halo {$order->recipient_name}, kami dari Neon Store tentang pesanan {$order->order_number}.";
+    $waUrl = 'https://wa.me/' . $order->whatsappPhone() . '?text=' . rawurlencode($waMessage);
+@endphp
+
 <a href="{{ route('staff.orders.index') }}" class="text-sm text-zinc-400 hover:text-cyan-300">&larr; Daftar pesanan</a>
 
 <div class="mt-6 flex flex-wrap items-center gap-3">
@@ -15,6 +20,31 @@
         &middot; ditangani oleh {{ $order->handler->name }}
     @endif
 </p>
+
+@if ($order->stock_short && $order->status === 'paid')
+    <div class="mt-6 space-y-3 rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-6 text-sm text-yellow-200">
+        <h2 class="text-lg font-semibold text-yellow-300">Stok kurang, hubungi pembeli</h2>
+        <p>
+            Pesanan ini sudah lunas, tetapi stok sudah diambil pesanan lain yang dikonfirmasi lebih dulu.
+            Tanyakan ke pembeli lewat WhatsApp:
+        </p>
+        <ul class="list-disc space-y-1 pl-5">
+            <li>Pilih uang kembali: klik <strong>Batalkan pesanan</strong>, lalu kembalikan uangnya secara manual.</li>
+            <li>Pilih menunggu: ubah status ke <strong>Diproduksi</strong>.</li>
+        </ul>
+        @foreach ($order->items as $item)
+            @if ($item->product)
+                <p class="text-xs text-yellow-200/80">
+                    {{ $item->item_name }}: dipesan {{ $item->quantity }}, stok sekarang {{ $item->product->stock }}.
+                </p>
+            @endif
+        @endforeach
+        <a href="{{ $waUrl }}" target="_blank" rel="noopener"
+            class="inline-block rounded-md border border-green-500 px-4 py-2 text-green-300 hover:bg-green-500/10">
+            Chat pembeli lewat WhatsApp
+        </a>
+    </div>
+@endif
 
 <div class="mt-6 grid gap-8 lg:grid-cols-2">
     <div class="space-y-6">
@@ -49,12 +79,13 @@
 
         <dl class="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-sm">
             <div>
-                <dt class="text-zinc-500">Pelanggan</dt>
-                <dd class="mt-1 text-zinc-100">{{ $order->user->name }} ({{ $order->user->email }})</dd>
-            </div>
-            <div>
-                <dt class="text-zinc-500">Penerima</dt>
-                <dd class="mt-1 text-zinc-100">{{ $order->recipient_name ?: '-' }} ({{ $order->phone ?: '-' }})</dd>
+                <dt class="text-zinc-500">Pembeli</dt>
+                <dd class="mt-1 text-zinc-100">
+                    {{ $order->recipient_name ?: '-' }} ({{ $order->phone ?: '-' }})
+                    @if ($order->phone)
+                        <a href="{{ $waUrl }}" target="_blank" rel="noopener" class="ml-2 text-green-300 hover:underline">Chat WhatsApp</a>
+                    @endif
+                </dd>
             </div>
             <div>
                 <dt class="text-zinc-500">Alamat</dt>
@@ -68,7 +99,7 @@
             </div>
             @if ($order->notes)
                 <div>
-                    <dt class="text-zinc-500">Catatan pelanggan</dt>
+                    <dt class="text-zinc-500">Catatan pembeli</dt>
                     <dd class="mt-1 text-zinc-100">{{ $order->notes }}</dd>
                 </div>
             @endif
@@ -84,7 +115,7 @@
                     Lunas{{ $order->paid_at ? ' pada ' . $order->paid_at->format('d/m/Y H:i') : '' }}.
                 </p>
             @elseif ($order->payment_status === 'rejected')
-                <p class="text-red-300">Bukti bayar ditolak. Menunggu pelanggan mengunggah ulang.</p>
+                <p class="text-red-300">Bukti bayar ditolak. Menunggu pembeli mengunggah ulang.</p>
             @elseif ($order->payment_status === 'pending_review')
                 <p class="text-cyan-200">Bukti bayar menunggu pemeriksaan. Cocokkan jumlah dan nama pengirim dengan mutasi rekening.</p>
             @else
@@ -92,15 +123,15 @@
             @endif
 
             @if ($order->payment_proof_path)
-                <a href="{{ route('orders.proof', $order) }}" target="_blank">
-                    <img src="{{ route('orders.proof', $order) }}" alt="Bukti bayar" class="w-64 rounded-md border border-zinc-700">
+                <a href="{{ route('orders.proof', $order->order_number) }}" target="_blank">
+                    <img src="{{ route('orders.proof', $order->order_number) }}" alt="Bukti bayar" class="w-64 rounded-md border border-zinc-700">
                 </a>
             @endif
 
             @if ($order->status === 'pending_payment' && $order->payment_status === 'pending_review')
                 <div class="flex flex-wrap items-center gap-4">
                     <form method="POST" action="{{ route('staff.orders.payment.approve', $order) }}"
-                        onsubmit="return confirm('Konfirmasi pembayaran ini sudah diterima?')">
+                        onsubmit="return confirm('Konfirmasi pembayaran ini sudah diterima? Stok produk akan dikurangi.')">
                         @csrf
                         <button type="submit"
                             class="rounded-md bg-green-400 px-4 py-2 font-semibold text-zinc-950 hover:bg-green-300">
@@ -148,13 +179,13 @@
                 @enderror
             @endif
 
-            @if (auth()->user()->isAdmin() && $order->canBeCancelledByAdmin())
+            @if ($order->canBeCancelled())
                 <form method="POST" action="{{ route('staff.orders.cancel', $order) }}"
-                    onsubmit="return confirm('Batalkan pesanan ini? Stok akan dikembalikan.')">
+                    onsubmit="return confirm('Batalkan pesanan ini?{{ $order->stock_deducted ? ' Stok akan dikembalikan.' : '' }}')">
                     @csrf
                     <button type="submit" class="text-red-400 hover:underline">Batalkan pesanan</button>
                     @if ($order->payment_status === 'paid')
-                        <p class="mt-1 text-xs text-zinc-500">Pesanan sudah dibayar, jadi uang pelanggan perlu dikembalikan secara manual.</p>
+                        <p class="mt-1 text-xs text-zinc-500">Pesanan sudah dibayar, jadi uang pembeli perlu dikembalikan secara manual.</p>
                     @endif
                 </form>
             @endif

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -15,7 +14,6 @@ class User extends Authenticatable
 
     public const ROLE_ADMIN = 'admin';
     public const ROLE_STAFF = 'staff';
-    public const ROLE_CUSTOMER = 'customer';
 
     protected $fillable = [
         'name',
@@ -46,15 +44,5 @@ class User extends Authenticatable
     public function isStaff(): bool
     {
         return $this->role === self::ROLE_STAFF;
-    }
-
-    public function isCustomer(): bool
-    {
-        return $this->role === self::ROLE_CUSTOMER;
-    }
-
-    public function orders(): HasMany
-    {
-        return $this->hasMany(Order::class);
     }
 }

@@ -12,7 +12,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->saveUser('admin@example.test', 'Admin', User::ROLE_ADMIN);
         $this->saveUser('staff@example.test', 'Staff Demo', User::ROLE_STAFF);
-        $this->saveUser('customer@example.test', 'Pelanggan Demo', User::ROLE_CUSTOMER);
 
         $categories = [
             ['name' => 'Neon Teks', 'slug' => 'neon-teks', 'description' => 'Neon sign berbentuk tulisan.'],

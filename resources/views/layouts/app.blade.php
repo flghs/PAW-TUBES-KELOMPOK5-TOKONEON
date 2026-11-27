@@ -15,22 +15,19 @@
                     <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'text-cyan-300' : 'text-zinc-300 hover:text-cyan-300' }}">Beranda</a>
                     <a href="{{ route('catalog.index') }}" class="{{ request()->routeIs('catalog.*') ? 'text-cyan-300' : 'text-zinc-300 hover:text-cyan-300' }}">Katalog</a>
                     <a href="{{ route('custom.index') }}" class="{{ request()->routeIs('custom.*') ? 'text-cyan-300' : 'text-zinc-300 hover:text-cyan-300' }}">Custom Neon</a>
+                    <a href="{{ route('orders.track') }}" class="{{ request()->routeIs('orders.*') ? 'text-cyan-300' : 'text-zinc-300 hover:text-cyan-300' }}">Lacak Pesanan</a>
                 </div>
             </div>
 
             <div class="flex items-center gap-4 text-sm">
                 @auth
-                    @if (auth()->user()->isCustomer())
-                        <a href="{{ route('customer.orders.index') }}" class="{{ request()->routeIs('customer.orders.*') ? 'text-cyan-300' : 'text-zinc-300 hover:text-cyan-300' }}">Pesanan saya</a>
-                    @endif
-                    <a href="{{ route('dashboard') }}" class="hover:text-cyan-300">Akun saya</a>
+                    <a href="{{ route('dashboard') }}" class="hover:text-cyan-300">Panel</a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="hover:text-pink-400">Keluar</button>
                     </form>
                 @else
-                    <a href="{{ route('login') }}" class="hover:text-cyan-300">Masuk</a>
-                    <a href="{{ route('register') }}" class="rounded-md border border-pink-500 px-3 py-1 text-pink-400 shadow-[0_0_12px_rgba(236,72,153,0.5)] hover:bg-pink-500/10">Daftar</a>
+                    <a href="{{ route('login') }}" class="text-zinc-500 hover:text-cyan-300">Masuk staff</a>
                 @endauth
             </div>
         </div>
@@ -39,6 +36,7 @@
             <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'text-cyan-300' : 'text-zinc-300' }}">Beranda</a>
             <a href="{{ route('catalog.index') }}" class="{{ request()->routeIs('catalog.*') ? 'text-cyan-300' : 'text-zinc-300' }}">Katalog</a>
             <a href="{{ route('custom.index') }}" class="{{ request()->routeIs('custom.*') ? 'text-cyan-300' : 'text-zinc-300' }}">Custom Neon</a>
+            <a href="{{ route('orders.track') }}" class="{{ request()->routeIs('orders.*') ? 'text-cyan-300' : 'text-zinc-300' }}">Lacak</a>
         </div>
     </nav>
 

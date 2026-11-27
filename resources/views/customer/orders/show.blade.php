@@ -3,13 +3,14 @@
 @section('title', 'Pesanan ' . $order->order_number)
 
 @section('content')
-<a href="{{ route('customer.orders.index') }}" class="text-sm text-zinc-400 hover:text-cyan-300">&larr; Pesanan saya</a>
+<a href="{{ route('orders.track') }}" class="text-sm text-zinc-400 hover:text-cyan-300">&larr; Lacak pesanan lain</a>
 
 <div class="mt-6 flex flex-wrap items-center gap-3">
     <h1 class="text-2xl font-semibold text-cyan-300">{{ $order->order_number }}</h1>
     @include('partials.order-status', ['order' => $order])
 </div>
 <p class="mt-1 text-sm text-zinc-500">Dibuat {{ $order->created_at->format('d/m/Y H:i') }}</p>
+<p class="mt-1 text-sm text-zinc-400">Simpan nomor pesanan ini. Kamu bisa membukanya lagi lewat menu Lacak Pesanan dengan nomor telepon yang kamu pakai saat memesan.</p>
 
 <div class="mt-6 grid gap-8 lg:grid-cols-2">
     <div class="space-y-6">
@@ -66,9 +67,16 @@
                 Pesanan ini dibatalkan.
             </div>
         @elseif ($order->payment_status === 'paid')
-            <div class="rounded-xl border border-green-500/40 bg-green-500/10 p-6 text-sm text-green-300">
-                Pembayaran sudah diterima. Status pesananmu akan diperbarui oleh tim kami.
-            </div>
+            @if ($order->stock_short && $order->status === 'paid')
+                <div class="rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-6 text-sm text-yellow-200">
+                    Pembayaranmu sudah diterima, tetapi stok produk ini sudah diambil pesanan lain lebih dulu.
+                    Tim kami akan menghubungimu lewat WhatsApp untuk menawarkan pengembalian dana atau menunggu barang dibuat.
+                </div>
+            @else
+                <div class="rounded-xl border border-green-500/40 bg-green-500/10 p-6 text-sm text-green-300">
+                    Pembayaran sudah diterima. Status pesananmu akan diperbarui oleh tim kami.
+                </div>
+            @endif
         @else
             <div class="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-sm">
                 <h2 class="text-lg font-semibold text-zinc-100">Pembayaran</h2>
@@ -101,7 +109,7 @@
                         Bukti bayarmu sudah terkirim dan sedang diperiksa.
                     </div>
                     @if ($order->payment_proof_path)
-                        <img src="{{ route('orders.proof', $order) }}" alt="Bukti bayar" class="w-48 rounded-md border border-zinc-700">
+                        <img src="{{ route('orders.proof', $order->order_number) }}" alt="Bukti bayar" class="w-48 rounded-md border border-zinc-700">
                     @endif
                 @endif
 
@@ -112,7 +120,7 @@
                 @endif
 
                 @if ($order->isAwaitingPayment())
-                    <form method="POST" action="{{ route('customer.orders.proof.store', $order) }}" enctype="multipart/form-data" class="space-y-3">
+                    <form method="POST" action="{{ route('orders.proof.store', $order->order_number) }}" enctype="multipart/form-data" class="space-y-3">
                         @csrf
                         <label for="proof" class="block text-zinc-300">Unggah bukti bayar (jpg, png, atau webp, maksimal 2 MB)</label>
                         <input id="proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp" required
@@ -126,13 +134,20 @@
                         </button>
                     </form>
 
-                    <form method="POST" action="{{ route('customer.orders.cancel', $order) }}"
+                    <form method="POST" action="{{ route('orders.cancel', $order->order_number) }}"
                         onsubmit="return confirm('Batalkan pesanan ini?')">
                         @csrf
                         <button type="submit" class="text-sm text-red-400 hover:underline">Batalkan pesanan</button>
                     </form>
                 @endif
             </div>
+        @endif
+
+        @if ($whatsappUrl)
+            <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener"
+                class="inline-block rounded-md border border-green-500 px-4 py-2 text-sm text-green-300 hover:bg-green-500/10">
+                Tanya pesanan lewat WhatsApp
+            </a>
         @endif
     </div>
 </div>

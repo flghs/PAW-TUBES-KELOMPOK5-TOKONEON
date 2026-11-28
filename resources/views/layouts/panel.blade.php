@@ -8,6 +8,7 @@
 </head>
 <body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased">
     @php($user = auth()->user())
+    @php($lowMaterials = \App\Models\Material::lowStockCount())
 
     <div class="flex min-h-screen flex-col md:flex-row">
         <aside class="w-full shrink-0 border-b border-zinc-800 bg-zinc-900 p-4 md:w-60 md:border-b-0 md:border-r">
@@ -23,6 +24,14 @@
                 <a href="{{ route('staff.orders.index') }}"
                     class="block rounded-md px-3 py-2 {{ request()->routeIs('staff.orders.*') ? 'bg-cyan-400/10 text-cyan-300' : 'text-zinc-300 hover:bg-zinc-800' }}">
                     Pesanan
+                </a>
+
+                <a href="{{ route('staff.materials.index') }}"
+                    class="flex items-center justify-between rounded-md px-3 py-2 {{ request()->routeIs('staff.materials.*', 'admin.materials.*') ? 'bg-cyan-400/10 text-cyan-300' : 'text-zinc-300 hover:bg-zinc-800' }}">
+                    <span>Bahan baku</span>
+                    @if ($lowMaterials > 0)
+                        <span class="rounded-full border border-yellow-500/50 px-2 py-0.5 text-xs text-yellow-300">{{ $lowMaterials }}</span>
+                    @endif
                 </a>
 
                 @if ($user->isAdmin())

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GalleryItemController;
+use App\Http\Controllers\Admin\MaterialController as AdminMaterialController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CatalogController;
@@ -11,6 +12,8 @@ use App\Http\Controllers\CustomPageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrderProofController;
+use App\Http\Controllers\Staff\MaterialController as StaffMaterialController;
+use App\Http\Controllers\Staff\MaterialStockController;
 use App\Http\Controllers\Staff\OrderController as StaffOrderController;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Models\User;
@@ -66,6 +69,9 @@ Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_ADMIN])
         Route::resource('categories', CategoryController::class)->except('show');
         Route::resource('products', ProductController::class)->except('show');
         Route::resource('gallery', GalleryItemController::class)->except('show');
+
+        // Data bahan baku: tambah dan ubah (tidak ada hapus, hanya dinonaktifkan).
+        Route::resource('materials', AdminMaterialController::class)->only(['create', 'store', 'edit', 'update']);
     });
 
 // Staff dan admin.
@@ -81,4 +87,9 @@ Route::middleware(['auth', EnsureUserHasRole::class . ':' . User::ROLE_STAFF . '
         Route::post('/orders/{order}/payment/reject', [StaffOrderController::class, 'rejectPayment'])->name('orders.payment.reject');
         Route::patch('/orders/{order}/status', [StaffOrderController::class, 'updateStatus'])->name('orders.status');
         Route::post('/orders/{order}/cancel', [StaffOrderController::class, 'cancel'])->name('orders.cancel');
+
+        // Bahan baku: lihat dan catat stok.
+        Route::get('/materials', [StaffMaterialController::class, 'index'])->name('materials.index');
+        Route::get('/materials/{material}', [StaffMaterialController::class, 'show'])->name('materials.show');
+        Route::post('/materials/{material}/stock', [MaterialStockController::class, 'store'])->name('materials.stock.store');
     });
